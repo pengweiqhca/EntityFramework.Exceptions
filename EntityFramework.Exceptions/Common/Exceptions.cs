@@ -150,8 +150,4 @@ public class DeadlockException : DbUpdateException
     public DeadlockException(string message, Exception innerException, IReadOnlyList<EntityEntry> entries) : base(message, innerException, entries)
     {
     }
-
-    public string ConstraintName { get; internal set; }
-    public IReadOnlyList<string> ConstraintProperties { get; internal set; }
-    public string SchemaQualifiedTableName { get; internal set; }
 }
