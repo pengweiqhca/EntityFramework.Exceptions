@@ -360,27 +360,20 @@ public abstract class DatabaseTests : IDisposable
         var id2 = p2.Entity.Id;
 
         using var controlContext = new DemoContext(DemoContext.Options);
-        using var transaction1 = DemoContext.Database.BeginTransactionAsync();
-        using var transaction2 = controlContext.Database.BeginTransactionAsync();
+        using var transaction1 = await DemoContext.Database.BeginTransactionAsync();
+        using var transaction2 = await controlContext.Database.BeginTransactionAsync();
 
         await DemoContext.Products.Where(c => c.Id == id1)
             .ExecuteUpdateAsync(c => c.SetProperty(p => p.Name, "Test11"));
 
-        await Assert.ThrowsAsync<DeadlockException>(async () =>
-        {
-            await controlContext.Products.Where(c => c.Id == id2)
-                .ExecuteUpdateAsync(c => c.SetProperty(p => p.Name, "Test21"));
+        await controlContext.Products.Where(c => c.Id == id2)
+            .ExecuteUpdateAsync(c => c.SetProperty(p => p.Name, "Test21"));
 
-            var task1 = Task.Run(() => DemoContext.Products.Where(c => c.Id == id2)
-                .ExecuteUpdateAsync(c => c.SetProperty(p => p.Name, "Test22")));
-
-            await Task.Delay(100);
-
-            var task2 = controlContext.Products.Where(c => c.Id == id1)
-                .ExecuteUpdateAsync(c => c.SetProperty(p => p.Name, "Test12"));
-
-            await Task.WhenAll(task1, task2);
-        });
+        await Assert.ThrowsAsync<DeadlockException>(() => Task.WhenAll(Task.Run(() => DemoContext.Products
+            .Where(c => c.Id == id2)
+            .ExecuteUpdateAsync(c => c.SetProperty(p => p.Name, "Test22"))), controlContext.Products
+            .Where(c => c.Id == id1)
+            .ExecuteUpdateAsync(c => c.SetProperty(p => p.Name, "Test12"))));
     }
 
     public virtual void Dispose()
